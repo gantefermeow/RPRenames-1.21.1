@@ -1,8 +1,8 @@
-name: Build Mod
+name: Build Mod (NeoForge)
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, "26.2", "1.21.1" ]
   pull_request:
   workflow_dispatch:
 
@@ -22,11 +22,11 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
-      - name: Build with Gradle
-        run: ./gradlew build --no-daemon --stacktrace
+      - name: Build NeoForge only
+        run: ./gradlew remapNeoforgeJar --no-daemon --stacktrace
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: mod-jar
+          name: rprenames-neoforge-1.21.1
           path: build/libs/*.jar
