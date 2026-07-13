@@ -18,14 +18,13 @@ import net.neoforged.fml.ModLoadingContext;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLLoader;
 import net.neoforged.fml.loading.FMLPaths;
-import net.neoforged.neoforge.client.event.AddClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.RegisterClientCommandsEvent;
+import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
-import net.neoforged.neoforge.client.resources.VanillaClientListeners;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.AddPackFindersEvent;
 import net.neoforged.neoforge.registries.RegisterEvent;
-import net.neoforged.neoforge.resource.JarContentsPackResources.JarContentsResourcesSupplier;
+import net.neoforged.neoforge.resource.PathPackResources;
 
 import java.util.Optional;
 
@@ -44,16 +43,16 @@ public class RPRenamesNeoForge {
         LOGGER.info("Initializing RPRenames NeoForge");
 
         modEventBus.addListener(this::onAddPackFinders);
-        modEventBus.addListener(this::onAddClientReloadListenersEvent);
+        modEventBus.addListener(this::onRegisterClientReloadListeners);
         modEventBus.addListener(this::onRegisterEvent);
         NeoForge.EVENT_BUS.addListener(this::onRegisterClientCommands);
 
         RPRenames.onInit();
 
-        if (FMLLoader.getCurrent().getLoadingModList().getModFileById("yet_another_config_lib_v3") != null) {
+        if (FMLLoader.getLoadingModList().getModFileById("yet_another_config_lib_v3") != null) {
             ModLoadingContext.get().registerExtensionPoint(
                     IConfigScreenFactory.class,
-                    () -> (_, parent) -> ModConfigScreenFactory.create(parent)
+                    () -> (container, parent) -> ModConfigScreenFactory.create(parent)
             );
         }
     }
@@ -69,7 +68,6 @@ public class RPRenamesNeoForge {
 
         if (event.getPackType() != PackType.CLIENT_RESOURCES) return;
 
-        var jarContents = ModList.get().getModFileById(MOD_ID).getFile().getContents();
         for (String id : new String[]{"vanillish", "default_dark_mode", "high_contrasted"}) {
             var packLocationInfo = new PackLocationInfo(
                     id,
@@ -77,15 +75,13 @@ public class RPRenamesNeoForge {
                     PackSource.BUILT_IN,
                     Optional.empty()
             );
-            @SuppressWarnings("UnstableApiUsage")
-            var resourcesSupplier = new JarContentsResourcesSupplier(
-                    jarContents,
-                    "resourcepacks/" + id
-            );
+
+            var resourcePath = ModList.get().getModFileById(MOD_ID).getFile()
+                    .findResource("resourcepacks/" + id);
 
             var pack = Pack.readMetaAndCreate(
                     packLocationInfo,
-                    resourcesSupplier,
+                    new PathPackResources.PathResourcesSupplier(resourcePath),
                     PackType.CLIENT_RESOURCES,
                     new PackSelectionConfig(
                             false,
@@ -93,7 +89,6 @@ public class RPRenamesNeoForge {
                             false
                     )
             );
-
 
             if (pack != null)
                 event.addRepositorySource((infoConsumer) -> infoConsumer.accept(pack));
@@ -111,8 +106,7 @@ public class RPRenamesNeoForge {
     }
 
     @SubscribeEvent
-    public void onAddClientReloadListenersEvent(AddClientReloadListenersEvent event) {
-        event.addListener(RENAMES_RELOADER_ID, updatableRenamesManager);
-        event.addDependency(VanillaClientListeners.LAST, RENAMES_RELOADER_ID);
+    public void onRegisterClientReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(RENAMES_RELOADER_ID, updatableRenamesManager);
     }
 }
